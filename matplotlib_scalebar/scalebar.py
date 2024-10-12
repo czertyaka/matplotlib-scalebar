@@ -40,6 +40,7 @@ __all__ = [
 # Standard library modules.
 import bisect
 import warnings
+import math
 
 # Third party modules.
 import matplotlib
@@ -60,6 +61,7 @@ from matplotlib.offsetbox import (
     AnchoredOffsetbox,
 )
 from matplotlib.patches import Rectangle
+from matplotlib.colors import to_rgba
 
 # Local modules.
 from matplotlib_scalebar.dimension import (
@@ -395,7 +397,7 @@ class ScaleBar(Artist):
     def draw_solid_rect(self, rotation, length_px, width_px, color):
         # Create scale bar
         if rotation == "horizontal":
-            return Rectangle(
+            rec = Rectangle(
                 (0, 0),
                 length_px,
                 width_px,
@@ -404,7 +406,7 @@ class ScaleBar(Artist):
                 edgecolor="none",
             )
         else:
-            return Rectangle(
+            rec = Rectangle(
                 (0, 0),
                 width_px,
                 length_px,
@@ -412,6 +414,49 @@ class ScaleBar(Artist):
                 facecolor=color,
                 edgecolor="none",
             )
+        return [rec]
+
+    def draw_geography_rect(
+        self,
+        rotation,
+        length_px,
+        width_px,
+        color,
+        value,
+    ):
+        def calc_best_step(length):
+            capacity = int(math.floor(math.log10(length)))
+            step = math.pow(10, capacity)
+            if step * 2 > length:
+                step = step / 2
+            return step
+
+        def invert_color(color_name):
+            rgb = to_rgba(color_name)
+            return (1 - rgb[0], 1 - rgb[1], 1 - rgb[2])
+
+        step = calc_best_step(value)
+        step_px = step * length_px / value
+        second_color = invert_color(color)
+
+        filled_px = 0
+        rectangles = []
+        current_color = color
+        while filled_px < length_px:
+            rec_step_px = step_px if filled_px + step_px <= length_px else length_px - filled_px
+            rectangles.append(
+                Rectangle(
+                    (filled_px, 0),
+                    rec_step_px,
+                    width_px,
+                    fill=True,
+                    facecolor=current_color,
+                    edgecolor=color
+                )
+            )
+            current_color = second_color if current_color == color else color
+            filled_px += rec_step_px
+        return rectangles
 
     def draw(self, renderer, *args, **kwargs):
         if not self.get_visible():
@@ -489,12 +534,19 @@ class ScaleBar(Artist):
         width_px = abs(ylim[1] - ylim[0]) * width_fraction
 
         if not scale_style or scale_style == "solid":
-            scale_rect = self.draw_solid_rect(rotation, length_px, width_px, color)
+            scale_rects = self.draw_solid_rect(rotation, length_px, width_px, color)
         elif scale_style == "geography":
-            pass
+            scale_rects = self.draw_geography_rect(
+                rotation,
+                length_px,
+                width_px,
+                color,
+                value,
+            )
 
         scale_bar_box = AuxTransformBox(ax.transData)
-        scale_bar_box.add_artist(scale_rect)
+        for rect in scale_rects:
+            scale_bar_box.add_artist(rect)
 
         # Create scale text
         if scale_loc != "none":
