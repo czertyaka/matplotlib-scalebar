@@ -89,7 +89,7 @@ _validate_label_loc = ValidateInStrings(
 _VALID_ROTATIONS = ["horizontal", "vertical"]
 _validate_rotation = ValidateInStrings("rotation", _VALID_ROTATIONS, ignorecase=True)
 
-_VALID_SCALE_STYLES = ["solid", "geography"]
+_VALID_SCALE_STYLES = ["simple", "geography"]
 _validate_scale_style = ValidateInStrings("scale_style", _VALID_SCALE_STYLES, ignorecase=True)
 
 
@@ -114,7 +114,7 @@ defaultParams.update(
         "scalebar.scale_loc": ["bottom", _validate_scale_loc],
         "scalebar.label_loc": ["top", _validate_label_loc],
         "scalebar.rotation": ["horizontal", _validate_rotation],
-        "scalebar.scale_style": ["solid", _validate_scale_style],
+        "scalebar.scale_style": ["simple", _validate_scale_style],
     }
 )
 
@@ -285,7 +285,7 @@ class ScaleBar(Artist):
         :type label_loc: :class:`str`
 
         :arg scale_style: style of box
-            (default: rcParams['scalebar.scale_style'] or ``solid``)
+            (default: rcParams['scalebar.scale_style'] or ``simple``)
         :type scale_style: :class:`str`
 
         :arg font_properties: font properties of the label text, specified
@@ -394,7 +394,7 @@ class ScaleBar(Artist):
         newvalue = self.dimension.convert(value, units, self.units)
         return newvalue / self.dx
 
-    def _draw_solid_rect(self, rotation, length_px, width_px, color):
+    def _draw_simple_rect(self, rotation, length_px, width_px, color):
         if rotation == "horizontal":
             rec = Rectangle(
                 (0, 0),
@@ -509,7 +509,7 @@ class ScaleBar(Artist):
         box_alpha = _get_value("box_alpha", 1.0)
         scale_loc = _get_value("scale_loc", "bottom").lower()
         label_loc = _get_value("label_loc", "top").lower()
-        scale_style = _get_value("scale_style", "solid")
+        scale_style = _get_value("scale_style", "simple")
         font_properties = self.font_properties
         fixed_value = self.fixed_value
         fixed_units = self.fixed_units or self.units
@@ -543,8 +543,8 @@ class ScaleBar(Artist):
 
         width_px = abs(ylim[1] - ylim[0]) * width_fraction
 
-        if not scale_style or scale_style == "solid":
-            scale_rects = self._draw_solid_rect(rotation, length_px, width_px, color)
+        if not scale_style or scale_style == "simple":
+            scale_rects = self._draw_simple_rect(rotation, length_px, width_px, color)
         elif scale_style == "geography":
             scale_rects = self._draw_geography_rect(
                 rotation,
