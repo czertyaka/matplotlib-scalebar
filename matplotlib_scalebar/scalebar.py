@@ -394,8 +394,7 @@ class ScaleBar(Artist):
         newvalue = self.dimension.convert(value, units, self.units)
         return newvalue / self.dx
 
-    def draw_solid_rect(self, rotation, length_px, width_px, color):
-        # Create scale bar
+    def _draw_solid_rect(self, rotation, length_px, width_px, color):
         if rotation == "horizontal":
             rec = Rectangle(
                 (0, 0),
@@ -416,7 +415,7 @@ class ScaleBar(Artist):
             )
         return [rec]
 
-    def draw_geography_rect(
+    def _draw_geography_rect(
         self,
         rotation,
         length_px,
@@ -431,30 +430,41 @@ class ScaleBar(Artist):
                 step = step / 2
             return step
 
+        step = calc_best_step(value)
+        step_px = step * length_px / value
+
         def invert_color(color_name):
             rgb = to_rgba(color_name)
             return (1 - rgb[0], 1 - rgb[1], 1 - rgb[2])
 
-        step = calc_best_step(value)
-        step_px = step * length_px / value
-        second_color = invert_color(color)
+        current_color = color
+        inverted_color = invert_color(current_color)
 
         filled_px = 0
         rectangles = []
-        current_color = color
         while filled_px < length_px:
-            rec_step_px = step_px if filled_px + step_px <= length_px else length_px - filled_px
-            rectangles.append(
-                Rectangle(
-                    (filled_px, 0),
-                    rec_step_px,
-                    width_px,
-                    fill=True,
-                    facecolor=current_color,
-                    edgecolor=color
-                )
+            if filled_px + step_px <= length_px:
+                rec_step_px = step_px
+            else:
+                rec_step_px = length_px - filled_px
+            if rotation == "horizontal":
+                rec_xy = (filled_px, 0)
+                rec_width = rec_step_px
+                rec_height = width_px
+            else:
+                rec_xy = (0, filled_px)
+                rec_width = width_px
+                rec_height = rec_step_px
+            rectangle = Rectangle(
+                rec_xy,
+                rec_width,
+                rec_height,
+                fill=True,
+                facecolor=current_color,
+                edgecolor=color
             )
-            current_color = second_color if current_color == color else color
+            rectangles.append(rectangle)
+            current_color, inverted_color = inverted_color, current_color
             filled_px += rec_step_px
         return rectangles
 
@@ -534,9 +544,9 @@ class ScaleBar(Artist):
         width_px = abs(ylim[1] - ylim[0]) * width_fraction
 
         if not scale_style or scale_style == "solid":
-            scale_rects = self.draw_solid_rect(rotation, length_px, width_px, color)
+            scale_rects = self._draw_solid_rect(rotation, length_px, width_px, color)
         elif scale_style == "geography":
-            scale_rects = self.draw_geography_rect(
+            scale_rects = self._draw_geography_rect(
                 rotation,
                 length_px,
                 width_px,
