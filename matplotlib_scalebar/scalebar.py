@@ -23,6 +23,7 @@ The following parameters are available for customization in the matplotlibrc:
     - scalebar.box_alpha
     - scalebar.scale_loc
     - scalebar.label_loc
+    - scalebar.scale_style
 
 See the class documentation (:class:`.Scalebar`) for a description of the
 parameters.
@@ -86,6 +87,9 @@ _validate_label_loc = ValidateInStrings(
 _VALID_ROTATIONS = ["horizontal", "vertical"]
 _validate_rotation = ValidateInStrings("rotation", _VALID_ROTATIONS, ignorecase=True)
 
+_VALID_BOX_STYLES = ["solid", "geography"]
+_validate_scale_style = ValidateInStrings("scale_style", _VALID_BOX_STYLES, ignorecase=True)
+
 
 def _validate_legend_loc(loc):
     rc = matplotlib.RcParams()
@@ -108,6 +112,7 @@ defaultParams.update(
         "scalebar.scale_loc": ["bottom", _validate_scale_loc],
         "scalebar.label_loc": ["top", _validate_label_loc],
         "scalebar.rotation": ["horizontal", _validate_rotation],
+        "scalebar.scale_style": ["solid", _validate_scale_style],
     }
 )
 
@@ -176,6 +181,7 @@ class ScaleBar(Artist):
         box_alpha=None,
         scale_loc=None,
         label_loc=None,
+        scale_style=None,
         font_properties=None,
         label_formatter=None,
         scale_formatter=None,
@@ -276,6 +282,10 @@ class ScaleBar(Artist):
             If ``none`` the label is not shown.
         :type label_loc: :class:`str`
 
+        :arg scale_style: style of box
+            (default: rcParams['scalebar.scale_style'] or ``solid``)
+        :type scale_style: :class:`str`
+
         :arg font_properties: font properties of the label text, specified
             either as dict or `fontconfig <http://www.fontconfig.org/>`_
             pattern (XML).
@@ -349,6 +359,7 @@ class ScaleBar(Artist):
         self.box_alpha = box_alpha
         self.scale_loc = scale_loc
         self.label_loc = label_loc
+        self.scale_style = scale_style
         self.scale_formatter = scale_formatter
         self.font_properties = font_properties
         self.fixed_value = fixed_value
@@ -380,6 +391,27 @@ class ScaleBar(Artist):
     def _calculate_exact_length(self, value, units):
         newvalue = self.dimension.convert(value, units, self.units)
         return newvalue / self.dx
+
+    def draw_solid_rect(self, rotation, length_px, width_px, color):
+        # Create scale bar
+        if rotation == "horizontal":
+            return Rectangle(
+                (0, 0),
+                length_px,
+                width_px,
+                fill=True,
+                facecolor=color,
+                edgecolor="none",
+            )
+        else:
+            return Rectangle(
+                (0, 0),
+                width_px,
+                length_px,
+                fill=True,
+                facecolor=color,
+                edgecolor="none",
+            )
 
     def draw(self, renderer, *args, **kwargs):
         if not self.get_visible():
@@ -422,6 +454,7 @@ class ScaleBar(Artist):
         box_alpha = _get_value("box_alpha", 1.0)
         scale_loc = _get_value("scale_loc", "bottom").lower()
         label_loc = _get_value("label_loc", "top").lower()
+        scale_style = _get_value("scale_style", "solid")
         font_properties = self.font_properties
         fixed_value = self.fixed_value
         fixed_units = self.fixed_units or self.units
@@ -455,25 +488,10 @@ class ScaleBar(Artist):
 
         width_px = abs(ylim[1] - ylim[0]) * width_fraction
 
-        # Create scale bar
-        if rotation == "horizontal":
-            scale_rect = Rectangle(
-                (0, 0),
-                length_px,
-                width_px,
-                fill=True,
-                facecolor=color,
-                edgecolor="none",
-            )
-        else:
-            scale_rect = Rectangle(
-                (0, 0),
-                width_px,
-                length_px,
-                fill=True,
-                facecolor=color,
-                edgecolor="none",
-            )
+        if not scale_style or scale_style == "solid":
+            scale_rect = self.draw_solid_rect(rotation, length_px, width_px, color)
+        elif scale_style == "geography":
+            pass
 
         scale_bar_box = AuxTransformBox(ax.transData)
         scale_bar_box.add_artist(scale_rect)
