@@ -433,12 +433,8 @@ class ScaleBar(Artist):
         step = calc_best_step(value)
         step_px = step * length_px / value
 
-        def invert_color(color_name):
-            rgb = to_rgba(color_name)
-            return (1 - rgb[0], 1 - rgb[1], 1 - rgb[2])
-
         current_color = color
-        inverted_color = invert_color(current_color)
+        second_color = "white"
 
         filled_px = 0
         rectangles = []
@@ -464,7 +460,7 @@ class ScaleBar(Artist):
                 edgecolor=color
             )
             rectangles.append(rectangle)
-            current_color, inverted_color = inverted_color, current_color
+            current_color, second_color = second_color, current_color
             filled_px += rec_step_px
         return rectangles
 
