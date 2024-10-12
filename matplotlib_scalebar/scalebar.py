@@ -23,7 +23,7 @@ The following parameters are available for customization in the matplotlibrc:
     - scalebar.box_alpha
     - scalebar.scale_loc
     - scalebar.label_loc
-    - scalebar.scale_style
+    - scalebar.bar_style
 
 See the class documentation (:class:`.Scalebar`) for a description of the
 parameters.
@@ -90,7 +90,7 @@ _VALID_ROTATIONS = ["horizontal", "vertical"]
 _validate_rotation = ValidateInStrings("rotation", _VALID_ROTATIONS, ignorecase=True)
 
 _VALID_SCALE_STYLES = ["simple", "geography"]
-_validate_scale_style = ValidateInStrings("scale_style", _VALID_SCALE_STYLES, ignorecase=True)
+_validate_bar_style = ValidateInStrings("bar_style", _VALID_SCALE_STYLES, ignorecase=True)
 
 
 def _validate_legend_loc(loc):
@@ -114,7 +114,7 @@ defaultParams.update(
         "scalebar.scale_loc": ["bottom", _validate_scale_loc],
         "scalebar.label_loc": ["top", _validate_label_loc],
         "scalebar.rotation": ["horizontal", _validate_rotation],
-        "scalebar.scale_style": ["simple", _validate_scale_style],
+        "scalebar.bar_style": ["simple", _validate_bar_style],
     }
 )
 
@@ -183,7 +183,7 @@ class ScaleBar(Artist):
         box_alpha=None,
         scale_loc=None,
         label_loc=None,
-        scale_style=None,
+        bar_style=None,
         font_properties=None,
         label_formatter=None,
         scale_formatter=None,
@@ -284,9 +284,9 @@ class ScaleBar(Artist):
             If ``none`` the label is not shown.
         :type label_loc: :class:`str`
 
-        :arg scale_style: style of box
-            (default: rcParams['scalebar.scale_style'] or ``simple``)
-        :type scale_style: :class:`str`
+        :arg bar_style: style of box
+            (default: rcParams['scalebar.bar_style'] or ``simple``)
+        :type bar_style: :class:`str`
 
         :arg font_properties: font properties of the label text, specified
             either as dict or `fontconfig <http://www.fontconfig.org/>`_
@@ -361,7 +361,7 @@ class ScaleBar(Artist):
         self.box_alpha = box_alpha
         self.scale_loc = scale_loc
         self.label_loc = label_loc
-        self.scale_style = scale_style
+        self.bar_style = bar_style
         self.scale_formatter = scale_formatter
         self.font_properties = font_properties
         self.fixed_value = fixed_value
@@ -509,7 +509,7 @@ class ScaleBar(Artist):
         box_alpha = _get_value("box_alpha", 1.0)
         scale_loc = _get_value("scale_loc", "bottom").lower()
         label_loc = _get_value("label_loc", "top").lower()
-        scale_style = _get_value("scale_style", "simple")
+        bar_style = _get_value("bar_style", "simple")
         font_properties = self.font_properties
         fixed_value = self.fixed_value
         fixed_units = self.fixed_units or self.units
@@ -543,9 +543,9 @@ class ScaleBar(Artist):
 
         width_px = abs(ylim[1] - ylim[0]) * width_fraction
 
-        if not scale_style or scale_style == "simple":
+        if not bar_style or bar_style == "simple":
             scale_rects = self._draw_simple_rect(rotation, length_px, width_px, color)
-        elif scale_style == "geography":
+        elif bar_style == "geography":
             scale_rects = self._draw_geography_rect(
                 rotation,
                 length_px,
@@ -839,18 +839,18 @@ class ScaleBar(Artist):
 
     scale_formatter = property(get_scale_formatter, set_scale_formatter)
 
-    def get_scale_style(self):
-        return self._scale_style
+    def get_bar_style(self):
+        return self._bar_style
 
-    def set_scale_style(self, scale_style):
-        if scale_style is not None and scale_style not in _VALID_SCALE_STYLES:
+    def set_bar_style(self, bar_style):
+        if bar_style is not None and bar_style not in _VALID_SCALE_STYLES:
             raise ValueError(
-                f"Unknown scale_style: {scale_style}. "
+                f"Unknown bar_style: {bar_style}. "
                 f"Valid locations: {', '.join(_VALID_SCALE_STYLES)}"
             )
-        self._scale_style = scale_style
+        self._bar_style = bar_style
 
-    scale_style = property(get_scale_style, set_scale_style)
+    bar_style = property(get_bar_style, set_bar_style)
 
     def get_label_formatter(self):
         warnings.warn(
