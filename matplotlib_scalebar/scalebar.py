@@ -87,8 +87,8 @@ _validate_label_loc = ValidateInStrings(
 _VALID_ROTATIONS = ["horizontal", "vertical"]
 _validate_rotation = ValidateInStrings("rotation", _VALID_ROTATIONS, ignorecase=True)
 
-_VALID_BOX_STYLES = ["solid", "geography"]
-_validate_scale_style = ValidateInStrings("scale_style", _VALID_BOX_STYLES, ignorecase=True)
+_VALID_SCALE_STYLES = ["solid", "geography"]
+_validate_scale_style = ValidateInStrings("scale_style", _VALID_SCALE_STYLES, ignorecase=True)
 
 
 def _validate_legend_loc(loc):
@@ -776,6 +776,19 @@ class ScaleBar(Artist):
         self._scale_formatter = scale_formatter
 
     scale_formatter = property(get_scale_formatter, set_scale_formatter)
+
+    def get_scale_style(self):
+        return self._scale_style
+
+    def set_scale_style(self, scale_style):
+        if scale_style is not None and scale_style not in _VALID_SCALE_STYLES:
+            raise ValueError(
+                f"Unknown scale_style: {scale_style}. "
+                f"Valid locations: {', '.join(_VALID_SCALE_STYLES)}"
+            )
+        self._scale_style = scale_style
+
+    scale_style = property(get_scale_style, set_scale_style)
 
     def get_label_formatter(self):
         warnings.warn(
