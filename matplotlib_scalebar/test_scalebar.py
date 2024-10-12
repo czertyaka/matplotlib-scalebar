@@ -34,6 +34,7 @@ def scalebar():
     yield scalebar
 
     plt.draw()
+    plt.close()
 
 
 def test_mpl_rcParams_update():
@@ -55,6 +56,7 @@ def test_mpl_rcParams_update():
         "scalebar.scale_loc": "bottom",
         "scalebar.label_loc": "top",
         "scalebar.rotation": "horizontal",
+        "scalebar.bar_style": "simple",
     }
     matplotlib.rcParams.update(params)
 
@@ -327,3 +329,13 @@ def test_bbox_transform(scalebar):
     scalebar.bbox_transform = scalebar.axes.transAxes
     assert scalebar.get_bbox_transform() == scalebar.axes.transAxes
     assert scalebar.bbox_transform == scalebar.axes.transAxes
+
+
+@pytest.mark.parametrize("bar_style", ["simple", "geography"])
+def test_bar_style(scalebar, bar_style):
+    assert scalebar.get_bar_style() is None
+    assert scalebar.bar_style is None
+
+    scalebar.set_bar_style(bar_style)
+    assert scalebar.get_bar_style() == bar_style
+    assert scalebar.bar_style == bar_style
