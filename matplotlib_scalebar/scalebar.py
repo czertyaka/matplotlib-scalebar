@@ -879,7 +879,7 @@ class ScaleBar(Artist):
         if bar_style is not None and bar_style not in _VALID_SCALE_STYLES:
             raise ValueError(
                 f"Unknown bar_style: {bar_style}. "
-                f"Valid locations: {', '.join(_VALID_SCALE_STYLES)}"
+                f"Valid bar styles: {', '.join(_VALID_SCALE_STYLES)}"
             )
         self._bar_style = bar_style
 
