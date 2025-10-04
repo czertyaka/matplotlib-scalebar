@@ -34,6 +34,7 @@ __all__ = [
     "SI_LENGTH",
     "SI_LENGTH_RECIPROCAL",
     "IMPERIAL_LENGTH",
+    "ASTRO_LENGTH",
     "PIXEL_LENGTH",
 ]
 
@@ -41,6 +42,7 @@ __all__ = [
 import bisect
 import warnings
 import math
+import dataclasses
 
 # Third party modules.
 import matplotlib
@@ -69,6 +71,7 @@ from matplotlib_scalebar.dimension import (
     SILengthDimension,
     SILengthReciprocalDimension,
     ImperialLengthDimension,
+    AstronomicalLengthDimension,
     PixelLengthDimension,
     AngleDimension,
 )
@@ -86,7 +89,7 @@ _validate_label_loc = ValidateInStrings(
     "label_loc", _VALID_LABEL_LOCATIONS, ignorecase=True
 )
 
-_VALID_ROTATIONS = ["horizontal", "vertical"]
+_VALID_ROTATIONS = ["horizontal", "horizontal-only", "vertical", "vertical-only"]
 _validate_rotation = ValidateInStrings("rotation", _VALID_ROTATIONS, ignorecase=True)
 
 _VALID_SCALE_STYLES = ["simple", "geography"]
@@ -133,6 +136,7 @@ matplotlib.rcParams.validate = dict(
 SI_LENGTH = "si-length"
 SI_LENGTH_RECIPROCAL = "si-length-reciprocal"
 IMPERIAL_LENGTH = "imperial-length"
+ASTRO_LENGTH = "astro-length"
 PIXEL_LENGTH = "pixel-length"
 ANGLE = "angle"
 
@@ -140,9 +144,19 @@ _DIMENSION_LOOKUP = {
     SI_LENGTH: SILengthDimension,
     SI_LENGTH_RECIPROCAL: SILengthReciprocalDimension,
     IMPERIAL_LENGTH: ImperialLengthDimension,
+    ASTRO_LENGTH: AstronomicalLengthDimension,
     PIXEL_LENGTH: PixelLengthDimension,
     ANGLE: AngleDimension,
 }
+
+
+@dataclasses.dataclass
+class ScaleBarInfo:
+    length_px: int
+    value: float
+    units: str
+    scale_text: str
+    window_extent: matplotlib.transforms.Bbox
 
 
 class ScaleBar(Artist):
@@ -220,6 +234,7 @@ class ScaleBar(Artist):
                 * ``:const:`si-length```: scale bar showing km, m, cm, etc.
                 * ``:const:`imperial-length```: scale bar showing in, ft, yd, mi, etc.
                 * ``:const:`si-length-reciprocal```: scale bar showing 1/m, 1/cm, etc.
+                * ``:const:`astro-length```: scale bar showing pc, kpc ly, AU, etc.
                 * ``:const:`pixel-length```: scale bar showing px, kpx, Mpx, etc.
                 * ``:const:`angle```: scale bar showing \u00b0, \u2032 or \u2032\u2032.
                 * a :class:`matplotlib_scalebar.dimension._Dimension` object
@@ -310,8 +325,12 @@ class ScaleBar(Artist):
         :arg animated: animation state (default: ``False``)
         :type animated: :class`bool`
 
-        :arg rotation: either ``horizontal`` or ``vertical``
-            (default: rcParams['scalebar.rotation'] or ``horizontal``)
+        :arg rotation: ``horizontal``, ``vertical``, ``horizontal-only``,
+            or ``vertical-only``
+            (default: rcParams['scalebar.rotation'] or ``horizontal``).
+            By default, ScaleBar checks that it is getting drawn on an axes
+            with equal aspect ratio and emits a warning if this is not the case.
+            The -only variants suppress that check.
         :type rotation: :class:`str`
 
         :arg bbox_to_anchor: box that is used to position the scalebar
@@ -340,8 +359,10 @@ class ScaleBar(Artist):
             )
             scale_formatter = scale_formatter or label_formatter
 
-        if loc is not None and self._convert_location(loc) != self._convert_location(
-            location
+        if (
+            loc is not None
+            and location is not None
+            and self._convert_location(loc) != self._convert_location(location)
         ):
             raise ValueError("loc and location are specified and not equal")
 
@@ -370,6 +391,7 @@ class ScaleBar(Artist):
         self.rotation = rotation
         self.bbox_to_anchor = bbox_to_anchor
         self.bbox_transform = bbox_transform
+        self._info = None
 
     def _calculate_best_length(self, length_px):
         dx = self.dx
@@ -465,6 +487,8 @@ class ScaleBar(Artist):
         return rectangles
 
     def draw(self, renderer, *args, **kwargs):
+        self._info = None
+
         if not self.get_visible():
             return
         if self.dx == 0:
@@ -510,6 +534,15 @@ class ScaleBar(Artist):
         fixed_value = self.fixed_value
         fixed_units = self.fixed_units or self.units
         rotation = _get_value("rotation", "horizontal").lower()
+        if rotation.endswith("-only"):
+            rotation = rotation[:-5]
+        else:  # Check aspect ratio.
+            if self.axes.get_aspect() != 1:
+                warnings.warn(
+                    f"Drawing scalebar on axes with unequal aspect ratio; "
+                    f"either call ax.set_aspect(1) or suppress the warning with "
+                    f"rotation='{rotation}-only'."
+                )
         label = self.label
 
         # Create text properties
@@ -610,6 +643,10 @@ class ScaleBar(Artist):
         box.patch.set_color(box_color)
         box.patch.set_alpha(box_alpha)
         box.draw(renderer)
+
+        self._info = ScaleBarInfo(
+            length_px, value, units, scale_text, box.get_window_extent(renderer)
+        )
 
     def get_dx(self):
         return self._dx
@@ -910,3 +947,9 @@ class ScaleBar(Artist):
         self._bbox_transform = bbox_transform
 
     bbox_transform = property(get_bbox_transform, set_bbox_transform)
+
+    @property
+    def info(self):
+        if self._info is None:
+            raise ValueError("Scale bar has not been drawn. Call figure.canvas.draw()")
+        return self._info

@@ -31,7 +31,7 @@ _PREFIXES_FACTORS = {
     "z": 1e-21,
     "y": 1e-24,
 }
-_LATEX_MU = "$\\mathrm{\\mu}$"
+_LATEX_MU = "$\\mathregular{\\mu}$"
 
 
 class _Dimension(object):
@@ -134,6 +134,18 @@ class ImperialLengthDimension(_Dimension):
         self.add_units("fur", 660)
         self.add_units("mi", 5280)
         self.add_units("lea", 15840)
+
+
+class AstronomicalLengthDimension(_Dimension):
+    def __init__(self):
+        super().__init__("pc")
+        for prefix, factor in _PREFIXES_FACTORS.items():
+            latexrepr = None
+            if prefix == "\u00b5" or prefix == "u":
+                latexrepr = _LATEX_MU + "pc"
+            self.add_units(prefix + "pc", factor, latexrepr)
+        self.add_units("ly", 0.30659485)
+        self.add_units("AU", 4.84813681e-06)
 
 
 class PixelLengthDimension(_Dimension):

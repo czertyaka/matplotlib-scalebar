@@ -87,6 +87,55 @@ https://kolibril13.github.io/plywood-gallery-matplotlib-scalebar/
 
 ![citurs](https://user-images.githubusercontent.com/44469195/202899151-483bad4b-bacf-4845-a7cd-ace7bb6417b1.png)
 
+## Tips
+
+### Save image in original resolution
+
+The code snippet below shows how to save an image (stored in variable `arr`) in the same resolution as the original image without any horizontal and vertical axes.
+
+```python
+dpi = 200
+fig = plt.figure(figsize=(arr.shape[1] / dpi, arr.shape[0] / dpi), frameon=False, dpi=dpi)
+
+ax = fig.add_axes([0.0, 0.0, 1.0, 1.0])
+ax.set_axis_off()
+
+ax.imshow(arr)
+
+scalebar = ScaleBar(100, "nm", length_fraction=0.25, location="lower right")
+ax.add_artist(scalebar)
+
+fig.savefig("original_resolution.png", dpi=dpi)
+```
+
+### Information about the drawn scale bar
+
+After the scale bar has been drawn, the `info` property returns the following dataclass.
+
+```python
+@dataclasses.dataclass
+class ScaleBarInfo:
+    length_px: int
+    value: float
+    units: str
+    scale_text: str
+    window_extent: matplotlib.transforms.Bbox
+```
+
+Note that the `info` property returns a `ValueError` exception if the scale bar has not been drawn.
+
+```python
+fig, ax = plt.subplots()
+
+scalebar = ScaleBar(0.08, "cm", length_fraction=0.25)
+ax.add_artist(scalebar)
+
+print(scalebar.info) # raises a ValueError exception
+
+fig.canvas.draw()
+
+print(scalebar.info) # works
+```
 
 ## ScaleBar arguments
 
@@ -169,6 +218,7 @@ Dimension of *dx* and *units*. It can either be equal:
 
 * `si-length` (default): scale bar showing km, m, cm, etc.
 * `imperial-length`: scale bar showing in, ft, yd, mi, etc.
+* `astro-length`: scale bar showing pc, kpc, Mpc, ly, AU, etc.
 * `si-length-reciprocal`: scale bar showing 1/m, 1/cm, etc.
 * `pixel-length`: scale bar showing px, kpx, Mpx, etc.
 * `angle`: scale bar showing °, ʹ (minute of arc) or ʹʹ (second of arc)
@@ -311,7 +361,16 @@ Default: `False`
 ### rotation
 
 Whether to create a scale bar based on the x-axis (default) or y-axis.
-*rotation* can either be `horizontal` or `vertical`.
+*rotation* can either be `horizontal`, `vertical`, `horizontal-only`, or
+`vertical-only`.
+
+By default, matplotlib_scalebar checks whether the axes have equal aspect ratio
+(so that the scale bar applies both for the x and the y directions), and emits
+a warning if this is not the case.  This warning can be suppressed by setting
+*rotation* to `horizontal-only` ("the scale bar only applies to the horizontal
+direction") or `vertical-only` ("the scale bar only applies to the vertical
+direction").
+
 Note you might have to adjust *scale_loc* and *label_loc* to achieve desired layout.
 Default: `None`, value from matplotlibrc or `horizontal`.
 
@@ -374,11 +433,16 @@ ax.add_artist(scalebar)
 
 ## Release notes
 
-### Dev
+### 0.9.0
 
 * Update tooling ([#53][i53])
 * Add example gallery ([#50][i50])
 * Add *bbox_anchor* and *bbox_transform* ([#40](i40))
+* Add common astronomical lengths ([#56][i56])
+* Fix example_angular.py ([#55][i55])
+* Support Python 3.12 ([#61][i61])
+* Add a (skippable) check that the axes have equal aspect ratio ([#62][i62])
+* Use `\\mathregular` for LaTeX micro ([#58][i58])
 
 ### 0.8.1
 
@@ -464,12 +528,16 @@ ax.add_artist(scalebar)
 [@musicinmybrain](https://github.com/musicinmybrain),
 [@kolibril13](https://github.com/kolibril13),
 [@ilopata1](https://github.com/ilopata1)
+[@jzuhone](https://github.com/jzuhone)
+[@360tetsu360](https://github.com/360tetsu360)
+[@jlaehne](https://github.com/jlaehne)
+[@Alessandro-Zunino](https://github.com/Alessandro-Zunino)
 
 ## License
 
 License under the BSD License, compatible with matplotlib.
 
-Copyright (c) 2015-2023 Philippe Pinard
+Copyright (c) 2015-2025 Philippe Pinard
 
 [i9]: https://github.com/ppinard/matplotlib-scalebar/issues/9
 [i11]: https://github.com/ppinard/matplotlib-scalebar/issues/11
@@ -495,3 +563,8 @@ Copyright (c) 2015-2023 Philippe Pinard
 [i48]: https://github.com/ppinard/matplotlib-scalebar/pull/48
 [i50]: https://github.com/ppinard/matplotlib-scalebar/pull/50
 [i53]: https://github.com/ppinard/matplotlib-scalebar/pull/53
+[i55]: https://github.com/ppinard/matplotlib-scalebar/pull/55
+[i56]: https://github.com/ppinard/matplotlib-scalebar/pull/56
+[i58]: https://github.com/ppinard/matplotlib-scalebar/issues/58
+[i61]: https://github.com/ppinard/matplotlib-scalebar/pull/61
+[i62]: https://github.com/ppinard/matplotlib-scalebar/pull/62

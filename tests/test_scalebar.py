@@ -2,6 +2,8 @@
 
 # Standard library modules.
 
+import warnings
+
 # Third party modules.
 import matplotlib
 
@@ -35,6 +37,7 @@ def scalebar():
 
     plt.draw()
     plt.close()
+    del fig
 
 
 def test_mpl_rcParams_update():
@@ -161,6 +164,15 @@ def test_scalebar_loc(scalebar):
 
     with pytest.raises(ValueError):
         ScaleBar(1.0, loc="upper right", location=2)
+
+    # Should not raise error
+    scalebar2 = ScaleBar(1.0, loc="upper center")
+    assert scalebar2.location == 9
+    assert scalebar2.loc == 9
+
+    scalebar2 = ScaleBar(1.0, location="upper center")
+    assert scalebar2.location == 9
+    assert scalebar2.loc == 9
 
 
 def test_scalebar_pad(scalebar):
@@ -300,7 +312,9 @@ def test_label_formatter(scalebar):
         assert scalebar.label_formatter(value, units) == "m 5"
 
 
-@pytest.mark.parametrize("rotation", ["horizontal", "vertical"])
+@pytest.mark.parametrize(
+    "rotation", ["horizontal", "vertical", "horizontal-only", "vertical-only"]
+)
 def test_rotation(scalebar, rotation):
     assert scalebar.get_rotation() is None
     assert scalebar.rotation is None
@@ -311,6 +325,33 @@ def test_rotation(scalebar, rotation):
 
     with pytest.raises(ValueError):
         scalebar.set_rotation("h")
+
+
+def test_rotation_checks_aspect():
+    fig, ax = plt.subplots()
+    sb = ScaleBar(0.5)
+    ax.add_artist(sb)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+
+        for aspect in ["auto", 2]:
+            ax.set_aspect(aspect)  # Warns if not using the -only variants.
+            for rotation in ["horizontal", "vertical"]:
+                sb.rotation = rotation
+                with pytest.warns():
+                    fig.canvas.draw()
+                sb.rotation = rotation + "-only"
+                fig.canvas.draw()
+
+        ax.set_aspect("equal")  # Never warn.
+        for rotation in ["horizontal", "vertical"]:
+            sb.rotation = rotation
+            fig.canvas.draw()
+            sb.rotation = rotation + "-only"
+            fig.canvas.draw()
+
+    plt.close(fig)
 
 
 def test_bbox_to_anchor(scalebar):
@@ -339,3 +380,32 @@ def test_bar_style(scalebar, bar_style):
     scalebar.set_bar_style(bar_style)
     assert scalebar.get_bar_style() == bar_style
     assert scalebar.bar_style == bar_style
+
+
+def test_info():
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+
+    data = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+    ax.imshow(data)
+
+    scalebar = ScaleBar(0.5)
+    ax.add_artist(scalebar)
+
+    with pytest.raises(ValueError):
+        scalebar.info
+
+    plt.draw()
+
+    info = scalebar.info
+    assert info.length_px == pytest.approx(0.4, 1e-4)
+    assert info.value == pytest.approx(2, 1e-4)
+    assert info.units == "dm"
+    assert info.scale_text == "2 dm"
+    assert info.window_extent.x0 == pytest.approx(456.5755555555555, 1e-4)
+    assert info.window_extent.y0 == pytest.approx(390.81511111111104, 1e-4)
+    assert info.window_extent.x1 == pytest.approx(511.4111111111111, 1e-4)
+    assert info.window_extent.y1 == pytest.approx(421.01111111111106, 1e-4)
+
+    plt.close()
+    del fig
